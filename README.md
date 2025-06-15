@@ -28,6 +28,7 @@
 ---
 
 ## 📁 项目结构
+```
 src
 └─ main
    ├─ resources
@@ -43,7 +44,7 @@ src
             ├─ Tokenizer.java
             └─ train
                └─ IDFTrainer.java
-
+```
 
 ---
 
