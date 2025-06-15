@@ -28,6 +28,21 @@
 ---
 
 ## 📁 项目结构
+src
+└─ main
+   ├─ resources
+   │  ├─ idf_map.txt
+   │  ├─ places_corpus.txt
+   │  ├─ places_corpus_bak.txt
+   │  └─ stopwords.txt
+   └─ java
+      └─ top
+         └─ orion
+            ├─ demo.java
+            ├─ PlaceNameMatcher.java
+            ├─ Tokenizer.java
+            └─ train
+               └─ IDFTrainer.java
 
 
 ---
