@@ -4,7 +4,7 @@ package top.orion;
  * @author Orion
  * @since 2025/6/15 18:59
  */
-public class main {
+public class demo {
 
     //test
     public static void main(String[] args) {
@@ -15,11 +15,17 @@ public class main {
             //计算耗时
             long startTime = System.currentTimeMillis();
             System.out.println(PlaceNameMatcher.match(name1, name2));
+            if (i == 4) {
+                PlaceNameMatcher.setThreshold(0.5);
+                PlaceNameMatcher.setWeights(0.5, 0.5);
+            }
             long endTime = System.currentTimeMillis();
             System.out.println("耗时：" + (endTime - startTime) + "ms");
         }
 
 
+        PlaceNameMatcher.setThreshold(1);
 
     }
+
 }

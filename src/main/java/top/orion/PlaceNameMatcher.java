@@ -1,14 +1,14 @@
 package top.orion;
 
 import org.apache.commons.text.similarity.JaroWinklerSimilarity;
-import org.apache.lucene.analysis.TokenStream;
-import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
-import org.wltea.analyzer.lucene.IKAnalyzer;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.InputStream;
+import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
+
 
 /**
  * 地名匹配器
@@ -28,17 +28,14 @@ public class PlaceNameMatcher {
     private static double WEIGHT_JARO_WINKLER = 0.6;
     private static double WEIGHT_TFIDF_COSINE = 0.4;
     private static double THRESHOLD = 0.85;
-
-    private final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
-
     private static volatile PlaceNameMatcher instance;
-
-
 
     static {
         loadStopWords();
         loadIDFMap();
     }
+
+    private final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
 
     private PlaceNameMatcher() {
         // 私有构造器
@@ -63,7 +60,7 @@ public class PlaceNameMatcher {
         try {
             InputStream is = PlaceNameMatcher.class.getClassLoader().getResourceAsStream("idf_map.txt");
             if (is == null) {
-                System.err.println("⚠️ 警告：idf_map.txt 未找到，使用空 IDF_MAP 继续运行");
+                System.err.println("PlaceNameMatcher --- ⚠️ 警告：idf_map.txt 未找到，使用空 IDF_MAP 继续运行");
                 return;
             }
 
@@ -81,10 +78,9 @@ public class PlaceNameMatcher {
 
         } catch (Exception e) {
             e.printStackTrace();
-            System.err.println("加载 IDF_MAP 失败：" + e.getMessage());
+            System.err.println("PlaceNameMatcher --- 加载 IDF_MAP 失败：" + e.getMessage());
         }
     }
-
 
 
     /**
@@ -103,7 +99,7 @@ public class PlaceNameMatcher {
             }
 
         } catch (Exception e) {
-            System.err.println("无法加载 stopwords.txt，使用默认停用词表继续运行");
+            System.err.println("PlaceNameMatcher --- 无法加载 stopwords.txt，使用默认停用词表继续运行");
             Collections.addAll(STOPWORDS, "国家重点", "风景名胜区", "景区", "路", "街", "大道");
         }
     }
@@ -111,6 +107,7 @@ public class PlaceNameMatcher {
 
     /**
      * 对外暴露的统一匹配接口 默认阈值和权重下简单匹配
+     *
      * @param name1 地名1
      * @param name2 地名2
      * @return 是否为同一地点
@@ -121,6 +118,7 @@ public class PlaceNameMatcher {
 
     /**
      * 设置匹配阈值（方便动态调整）
+     *
      * @param threshold 新的匹配阈值
      */
     public static void setThreshold(double threshold) {
@@ -129,7 +127,8 @@ public class PlaceNameMatcher {
 
     /**
      * 设置各算法权重（方便调优）
-     * @param jwWeight JW 权重
+     *
+     * @param jwWeight     JW 权重
      * @param cosineWeight Cosine 权重
      */
     public static void setWeights(double jwWeight, double cosineWeight) {
@@ -138,7 +137,22 @@ public class PlaceNameMatcher {
     }
 
     /**
+     * 去除字符串中的标点符号。（包含中英文）
+     * 测试用例：!@#$%^&*()_+-=[]{}！@#￥%……&*（）——+「」【】
+     *
+     * @param input 原始字符串
+     * @return 去除标点后的字符串
+     */
+    public static String removePunctuation(String input) {
+        // 正则表达式，匹配所有的标点符号
+        String regex = "[\\p{P}$^+=￥]";
+        // 使用replaceAll方法替换所有匹配到的标点符号为空字符""
+        return input.replaceAll(regex, "");
+    }
+
+    /**
      * 使用加权评分方式综合判断两个地名是否为同一地点
+     *
      * @param name1 地名1
      * @param name2 地名2
      * @return 是否为同一地点
@@ -170,28 +184,33 @@ public class PlaceNameMatcher {
         // 3. 综合得分
         double totalScore = jwScore * WEIGHT_JARO_WINKLER + cosineScore * WEIGHT_TFIDF_COSINE;
 
-        System.out.println("jwScore:"+jwScore);
-        System.out.println("cosineScore:"+cosineScore);
-        System.out.println("totalScore:"+totalScore);
+//        System.out.println("jwScore:" + jwScore);
+//        System.out.println("cosineScore:" + cosineScore);
+//        System.out.println("totalScore:" + totalScore);
+//        System.out.println("THRESHOLD:" + THRESHOLD);
+//        System.out.println("WEIGHT_JARO_WINKLER:" + WEIGHT_JARO_WINKLER);
+//        System.out.println("WEIGHT_TFIDF_COSINE:" + WEIGHT_TFIDF_COSINE);
+
         // 4. 判断是否超过阈值
         return totalScore > THRESHOLD;
     }
 
     /**
      * 去除地名中的冗余词
+     *
      * @param name 原始地名
      * @return 标准化后的地名
      */
     private String normalizePlaceName(String name) {
         for (String stopword : STOPWORDS) {
-            name = name.replace(stopword, "");
+            name = name.replaceAll("\\b" + Pattern.quote(stopword) + "\\b", "");
         }
         return name.trim();
     }
 
-
     /**
      * 计算两个地名之间的 TF-IDF + Cosine 相似度
+     *
      * @param name1 地名1
      * @param name2 地名2
      * @return Cosine 相似度
@@ -243,9 +262,9 @@ public class PlaceNameMatcher {
         return dotProduct / (Math.sqrt(norm1) * Math.sqrt(norm2));
     }
 
-
     /**
      * 统计词频
+     *
      * @param tokens 分词结果
      * @return 词频映射
      */
@@ -255,20 +274,5 @@ public class PlaceNameMatcher {
             freq.put(token, freq.getOrDefault(token, 0) + 1);
         }
         return freq;
-    }
-
-
-    /**
-     * 去除字符串中的标点符号。（包含中英文）
-     * 测试用例：!@#$%^&*()_+-=[]{}！@#￥%……&*（）——+「」【】
-     *
-     * @param input 原始字符串
-     * @return 去除标点后的字符串
-     */
-    public static String removePunctuation(String input) {
-        // 正则表达式，匹配所有的标点符号
-        String regex = "[\\p{P}$^+=￥]";
-        // 使用replaceAll方法替换所有匹配到的标点符号为空字符""
-        return input.replaceAll(regex, "");
     }
 }
