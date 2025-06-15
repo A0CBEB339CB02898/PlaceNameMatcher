@@ -6,7 +6,7 @@
 
     <groupId>io.github.a0cbeb339cb02898</groupId>
     <artifactId>PlaceNameMatcher</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1</version>
     <packaging>jar</packaging>
     <name>PlaceNameMatcher</name>
     <description>A place name matching library using Jaro-Winkler and TF-IDF cosine similarity.</description>
