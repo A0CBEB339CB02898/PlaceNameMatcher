@@ -1,6 +1,8 @@
 package top.orion.train;
 
-import com.hankcs.hanlp.HanLP;
+
+
+import top.orion.Tokenizer;
 
 import java.io.*;
 import java.util.*;
@@ -37,7 +39,7 @@ public class IDFTrainer {
         Map<String, Integer> docFrequency = new HashMap<>();
 
         for (String doc : documents) {
-            List<String> words = tokenize(doc);
+            List<String> words = Tokenizer.tokenize(doc);
             Set<String> uniqueWords = new HashSet<>(words);
 
             for (String word : uniqueWords) {
@@ -57,15 +59,6 @@ public class IDFTrainer {
         return idfMap;
     }
 
-    /**
-     * 分词处理
-     */
-    private static List<String> tokenize(String text) {
-        return HanLP.segment(text).stream()
-                .map(term -> term.word)
-                .filter(word -> word.length() > 1) // 可选：过滤单字
-                .collect(Collectors.toList());
-    }
 
     /**
      * 读取所有行
@@ -90,7 +83,7 @@ public class IDFTrainer {
         try (BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath), "UTF-8"))) {
             //加入排序 让输出结果更清晰
             List<Map.Entry<String, Double>> sortedEntries = new ArrayList<>(idfMap.entrySet());
-            sortedEntries.sort(Map.Entry.comparingByValue(Comparator.reverseOrder()));
+            sortedEntries.sort(Map.Entry.comparingByValue(Comparator.naturalOrder()));
             for (Map.Entry<String, Double> entry : sortedEntries) {
                 writer.write(entry.getKey() + "=" + String.format("%.4f", entry.getValue()));
                 writer.newLine();

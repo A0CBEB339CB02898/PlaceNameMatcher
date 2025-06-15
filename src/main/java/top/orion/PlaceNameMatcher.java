@@ -1,12 +1,11 @@
 package top.orion;
 
-import com.hankcs.hanlp.HanLP;
-import com.hankcs.hanlp.seg.common.Term;
 import org.apache.commons.text.similarity.JaroWinklerSimilarity;
+import org.apache.lucene.analysis.TokenStream;
+import org.apache.lucene.analysis.tokenattributes.CharTermAttribute;
+import org.wltea.analyzer.lucene.IKAnalyzer;
 
-import java.io.BufferedReader;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -22,57 +21,8 @@ public class PlaceNameMatcher {
 
     // 停用词集合
     private static final Set<String> STOPWORDS = new HashSet<>();
+    private static final Map<String, Double> IDF_MAP = new HashMap<>();
 
-    static {
-        loadStopWords();
-        loadIDFMap();
-    }
-    static Map<String, Double> IDF_MAP = new HashMap<>();
-
-
-    /**
-     * 从文件加载 IDF_MAP
-     */
-    private static void loadIDFMap() {
-        try (InputStream is = PlaceNameMatcher.class.getClassLoader().getResourceAsStream("src/main/resources/idf_map.txt");
-             BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-
-            String line;
-            while ((line = reader.readLine()) != null) {
-                if (line.contains("=")) {
-                    String[] parts = line.split("=", 2);
-                    String word = parts[0].trim();
-                    double idf = Double.parseDouble(parts[1].trim());
-                    IDF_MAP.put(word, idf);
-                }
-            }
-
-        } catch (Exception e) {
-            System.err.println("无法加载 idf_map.txt，使用空 IDF_MAP 继续运行");
-        }
-    }
-
-    /**
-     * 从外部文件加载停用词
-     */
-    private static void loadStopWords() {
-        try (
-                InputStream is = PlaceNameMatcher.class.getClassLoader().getResourceAsStream("stopwords.txt");
-                BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(is), StandardCharsets.UTF_8))
-        ) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-                String word = line.trim();
-                if (!word.isEmpty()) {
-                    STOPWORDS.add(word);
-                }
-            }
-        } catch (Exception e) {
-            System.err.println("无法加载 stopwords.txt，使用默认停用词表继续运行");
-            // 默认回退
-            Collections.addAll(STOPWORDS, "国家重点", "风景名胜区", "景区", "路", "街", "大道");
-        }
-    }
 
     // 权重配置（可外置为配置文件）
     private static double WEIGHT_JARO_WINKLER = 0.6;
@@ -81,6 +31,84 @@ public class PlaceNameMatcher {
 
     private final JaroWinklerSimilarity jaroWinkler = new JaroWinklerSimilarity();
 
+    private static volatile PlaceNameMatcher instance;
+
+
+
+    static {
+        loadStopWords();
+        loadIDFMap();
+    }
+
+    private PlaceNameMatcher() {
+        // 私有构造器
+    }
+
+    public static PlaceNameMatcher getInstance() {
+        if (instance == null) {
+            synchronized (PlaceNameMatcher.class) {
+                if (instance == null) {
+                    instance = new PlaceNameMatcher();
+                }
+            }
+        }
+        return instance;
+    }
+
+
+    /**
+     * 从文件加载 IDF_MAP（使用 NIO 风格 + BufferedReader）
+     */
+    private static void loadIDFMap() {
+        try {
+            InputStream is = PlaceNameMatcher.class.getClassLoader().getResourceAsStream("idf_map.txt");
+            if (is == null) {
+                System.err.println("⚠️ 警告：idf_map.txt 未找到，使用空 IDF_MAP 继续运行");
+                return;
+            }
+
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    if (line.contains("=")) {
+                        String[] parts = line.split("=", 2);
+                        String word = parts[0].trim();
+                        double idf = Double.parseDouble(parts[1].trim());
+                        IDF_MAP.put(word, idf);
+                    }
+                }
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("加载 IDF_MAP 失败：" + e.getMessage());
+        }
+    }
+
+
+
+    /**
+     * 从外部文件加载停用词（使用 NIO 风格 + BufferedReader）
+     */
+    private static void loadStopWords() {
+        try (InputStream is = PlaceNameMatcher.class.getClassLoader().getResourceAsStream("stopwords.txt");
+             BufferedReader reader = new BufferedReader(new InputStreamReader(Objects.requireNonNull(is), StandardCharsets.UTF_8))) {
+
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String word = line.trim();
+                if (!word.isEmpty()) {
+                    STOPWORDS.add(word);
+                }
+            }
+
+        } catch (Exception e) {
+            System.err.println("无法加载 stopwords.txt，使用默认停用词表继续运行");
+            Collections.addAll(STOPWORDS, "国家重点", "风景名胜区", "景区", "路", "街", "大道");
+        }
+    }
+
+
     /**
      * 对外暴露的统一匹配接口 默认阈值和权重下简单匹配
      * @param name1 地名1
@@ -88,8 +116,7 @@ public class PlaceNameMatcher {
      * @return 是否为同一地点
      */
     public static boolean match(String name1, String name2) {
-        PlaceNameMatcher matcher = new PlaceNameMatcher();
-        return matcher.isSamePlace(name1, name2);
+        return getInstance().isSamePlace(name1, name2);
     }
 
     /**
@@ -121,9 +148,20 @@ public class PlaceNameMatcher {
         String cleanName1 = normalizePlaceName(name1);
         String cleanName2 = normalizePlaceName(name2);
 
-        if (cleanName1.equals(cleanName2)) {
+        // 如果一个为空，直接返回 false
+        if (cleanName1.isEmpty() || cleanName2.isEmpty()) {
+            return false;
+        }
+
+        // 如果长度差异太大，也可以提前返回 false（可选）
+        if (Math.abs(cleanName1.length() - cleanName2.length()) > 5) {
+            return false;
+        }
+
+        if (cleanName1.equals(cleanName2) || removePunctuation(cleanName1).equals(removePunctuation(cleanName2))) {
             return true;
         }
+
 
         // 2. 各项评分（0~1）
         double jwScore = jaroWinkler.apply(cleanName1, cleanName2); // 字符串相似度
@@ -151,18 +189,6 @@ public class PlaceNameMatcher {
         return name.trim();
     }
 
-    /**
-     * 使用 HanLP 分词并提取关键词
-     * @param text 输入文本
-     * @return 分词后的词列表
-     */
-    private List<String> tokenize(String text) {
-        List<Term> termList = HanLP.segment(text);
-        return termList.stream()
-                .map(term -> term.word)
-                .filter(word -> !STOPWORDS.contains(word))
-                .collect(Collectors.toList());
-    }
 
     /**
      * 计算两个地名之间的 TF-IDF + Cosine 相似度
@@ -171,8 +197,8 @@ public class PlaceNameMatcher {
      * @return Cosine 相似度
      */
     private double computeTfIdfCosine(String name1, String name2) {
-        List<String> tokens1 = tokenize(name1);
-        List<String> tokens2 = tokenize(name2);
+        List<String> tokens1 = Tokenizer.tokenize(name1);
+        List<String> tokens2 = Tokenizer.tokenize(name2);
 
         Set<String> allWords = new HashSet<>();
         allWords.addAll(tokens1);
@@ -180,6 +206,10 @@ public class PlaceNameMatcher {
 
         Map<String, Integer> tf1 = computeTermFrequency(tokens1);
         Map<String, Integer> tf2 = computeTermFrequency(tokens2);
+
+        // 只保留出现次数 >= 1 的词
+        tf1.entrySet().removeIf(e -> e.getValue() < 1);
+        tf2.entrySet().removeIf(e -> e.getValue() < 1);
 
         // 假设整个语料库有 10000 个文档（可调整）
         int totalDocs = 10000;
@@ -225,5 +255,20 @@ public class PlaceNameMatcher {
             freq.put(token, freq.getOrDefault(token, 0) + 1);
         }
         return freq;
+    }
+
+
+    /**
+     * 去除字符串中的标点符号。（包含中英文）
+     * 测试用例：!@#$%^&*()_+-=[]{}！@#￥%……&*（）——+「」【】
+     *
+     * @param input 原始字符串
+     * @return 去除标点后的字符串
+     */
+    public static String removePunctuation(String input) {
+        // 正则表达式，匹配所有的标点符号
+        String regex = "[\\p{P}$^+=￥]";
+        // 使用replaceAll方法替换所有匹配到的标点符号为空字符""
+        return input.replaceAll(regex, "");
     }
 }
