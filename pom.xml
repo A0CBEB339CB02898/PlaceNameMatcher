@@ -5,12 +5,20 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>io.github.a0cbeb339cb02898</groupId>
-    <artifactId>PlaceNameMatcher</artifactId>
+    <artifactId>place-name-matcher</artifactId>
     <version>1.0.1</version>
     <packaging>jar</packaging>
     <name>PlaceNameMatcher</name>
     <description>A place name matching library using Jaro-Winkler and TF-IDF cosine similarity.</description>
     <url>https://github.com/A0CBEB339CB02898/PlaceNameMatcher</url>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub A0CBEB339CB02898 Apache Maven Packages</name>
+            <url>https://maven.pkg.github.com/A0CBEB339CB02898/PlaceNameMatcher</url>
+        </repository>
+    </distributionManagement>
 
     <licenses>
         <license>
@@ -71,9 +79,9 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-deploy-plugin</artifactId>
                 <version>3.1.0</version>
-                <configuration>
-                    <skip>true</skip>
-                </configuration>
+                <!--                <configuration>-->
+                <!--                    <skip>true</skip>-->
+                <!--                </configuration>-->
             </plugin>
 
             <!-- Source Plugin -->
@@ -124,35 +132,37 @@
                 </configuration>
             </plugin>
 
-            <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.4.0</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                    <tokenAuth>true</tokenAuth>
-                </configuration>
-            </plugin>
+
+            <!--            <plugin>-->
+            <!--                <groupId>org.sonatype.central</groupId>-->
+            <!--                <artifactId>central-publishing-maven-plugin</artifactId>-->
+            <!--                <version>0.4.0</version>-->
+            <!--                <extensions>true</extensions>-->
+            <!--                <configuration>-->
+            <!--                    <publishingServerId>central</publishingServerId>-->
+            <!--                    <tokenAuth>true</tokenAuth>-->
+            <!--                </configuration>-->
+            <!--            </plugin>-->
 
             <!-- GPG -->
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>1.6</version>
-                <configuration>
-                    <executable>C:\Program Files (x86)\GnuPG\bin\gpg.exe</executable>
-                </configuration>
-                <executions>
-                    <execution>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
+            <!--            <plugin>-->
+            <!--                <groupId>org.apache.maven.plugins</groupId>-->
+            <!--                <artifactId>maven-gpg-plugin</artifactId>-->
+            <!--                <version>1.6</version>-->
+            <!--                <configuration>-->
+            <!--                    <executable>C:\Program Files (x86)\GnuPG\bin\gpg.exe</executable>-->
+            <!--                </configuration>-->
+            <!--                <executions>-->
+            <!--                    <execution>-->
+            <!--                        <phase>verify</phase>-->
+            <!--                        <goals>-->
+            <!--                            <goal>sign</goal>-->
+            <!--                        </goals>-->
+            <!--                    </execution>-->
+            <!--                </executions>-->
+            <!--            </plugin>-->
         </plugins>
     </build>
+
 
 </project>
