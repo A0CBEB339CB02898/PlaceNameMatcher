@@ -1,5 +1,6 @@
 package top.orion;
 
+import cn.hutool.extra.pinyin.PinyinUtil;
 import org.apache.commons.text.similarity.JaroWinklerSimilarity;
 
 import java.io.BufferedReader;
@@ -25,9 +26,11 @@ public class PlaceNameMatcher {
 
 
     // 权重配置（可外置为配置文件）
-    private static double WEIGHT_JARO_WINKLER = 0.6;
-    private static double WEIGHT_TFIDF_COSINE = 0.4;
-    private static double THRESHOLD = 0.85;
+    private static double WEIGHT_JARO_WINKLER = 0.35;  // 原始字符匹配
+    private static double WEIGHT_TFIDF_COSINE = 0.3; // 语义匹配
+
+    private static double WEIGHT_PINYIN = 0.35;      // 拼音匹配
+    private static double THRESHOLD = 0.82;          // 匹配阈值
     private static volatile PlaceNameMatcher instance;
 
     static {
@@ -130,10 +133,12 @@ public class PlaceNameMatcher {
      *
      * @param jwWeight     JW 权重
      * @param cosineWeight Cosine 权重
+     * @param pinyinWeight 拼音权重
      */
-    public static void setWeights(double jwWeight, double cosineWeight) {
+    public static void setWeights(double jwWeight, double cosineWeight, double pinyinWeight) {
         WEIGHT_JARO_WINKLER = jwWeight;
         WEIGHT_TFIDF_COSINE = cosineWeight;
+        WEIGHT_PINYIN = pinyinWeight;
     }
 
     /**
@@ -168,11 +173,11 @@ public class PlaceNameMatcher {
         }
 
         // 如果长度差异太大，也可以提前返回 false（可选）
-        if (Math.abs(cleanName1.length() - cleanName2.length()) > 5) {
+        if (Math.abs(cleanName1.length() - cleanName2.length()) > 8) {
             return false;
         }
 
-        if (cleanName1.equals(cleanName2) || removePunctuation(cleanName1).equals(removePunctuation(cleanName2))) {
+        if (cleanName1.equals(cleanName2)) {
             return true;
         }
 
@@ -180,12 +185,18 @@ public class PlaceNameMatcher {
         // 2. 各项评分（0~1）
         double jwScore = jaroWinkler.apply(cleanName1, cleanName2); // 字符串相似度
         double cosineScore = computeTfIdfCosine(cleanName1, cleanName2); // 语义相似度
+        double pinyinScore = computePinyinSimilarity(cleanName1, cleanName2); // 拼音相似度
 
-        // 3. 综合得分
-        double totalScore = jwScore * WEIGHT_JARO_WINKLER + cosineScore * WEIGHT_TFIDF_COSINE;
+
+// 3. 综合得分
+        double totalScore =
+                jwScore * WEIGHT_JARO_WINKLER +
+                        cosineScore * WEIGHT_TFIDF_COSINE +
+                        pinyinScore * WEIGHT_PINYIN;
 
 //        System.out.println("jwScore:" + jwScore);
 //        System.out.println("cosineScore:" + cosineScore);
+//        System.out.println("pinyinScore:" + pinyinScore);
 //        System.out.println("totalScore:" + totalScore);
 //        System.out.println("THRESHOLD:" + THRESHOLD);
 //        System.out.println("WEIGHT_JARO_WINKLER:" + WEIGHT_JARO_WINKLER);
@@ -205,6 +216,8 @@ public class PlaceNameMatcher {
         for (String stopword : STOPWORDS) {
             name = name.replaceAll("\\b" + Pattern.quote(stopword) + "\\b", "");
         }
+        // 去除标点符号
+        name = removePunctuation(name);
         return name.trim();
     }
 
@@ -275,4 +288,22 @@ public class PlaceNameMatcher {
         }
         return freq;
     }
+
+
+    /**
+     * 使用 Hutool 将汉字转换为拼音字符串
+     */
+    private String toPinyin(String str) {
+        return PinyinUtil.getPinyin(str);
+    }
+
+    /**
+     * 计算两个地名拼音的 Jaro-Winkler 相似度
+     */
+    private double computePinyinSimilarity(String name1, String name2) {
+        String pinyin1 = toPinyin(name1);
+        String pinyin2 = toPinyin(name2);
+        return jaroWinkler.apply(pinyin1, pinyin2);
+    }
+
 }
