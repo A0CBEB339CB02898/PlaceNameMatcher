@@ -29,7 +29,7 @@ public class PlaceNameMatcher {
     private static double WEIGHT_TFIDF_COSINE = 0.3; // 语义匹配
 
     private static double WEIGHT_PINYIN = 0.35;      // 拼音匹配
-    private static double THRESHOLD = 0.82;          // 匹配阈值
+    private static double THRESHOLD = 0.85;          // 匹配阈值
     private static volatile PlaceNameMatcher instance;
 
     static {
