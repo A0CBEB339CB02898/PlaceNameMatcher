@@ -23,8 +23,7 @@ public class PlaceNameMatcher {
     // 停用词集合
     private static final Set<String> STOPWORDS = new HashSet<>();
     private static final Map<String, Double> IDF_MAP = new HashMap<>();
-
-
+    private static List<String> SORTED_STOPWORDS = Collections.emptyList(); // 已排序的停用词列
     // 权重配置（可外置为配置文件）
     private static double WEIGHT_JARO_WINKLER = 0.35;  // 原始字符匹配
     private static double WEIGHT_TFIDF_COSINE = 0.3; // 语义匹配
@@ -104,6 +103,10 @@ public class PlaceNameMatcher {
         } catch (Exception e) {
             System.err.println("PlaceNameMatcher --- 无法加载 stopwords.txt，使用默认停用词表继续运行");
             Collections.addAll(STOPWORDS, "国家重点", "风景名胜区", "景区", "路", "街", "大道");
+        } finally {
+            // 默认词也排序
+            SORTED_STOPWORDS = new ArrayList<>(STOPWORDS);
+            SORTED_STOPWORDS.sort((a, b) -> Integer.compare(b.length(), a.length()));
         }
     }
 
@@ -213,8 +216,15 @@ public class PlaceNameMatcher {
      * @return 标准化后的地名
      */
     private String normalizePlaceName(String name) {
-        for (String stopword : STOPWORDS) {
-            name = name.replaceAll("\\b" + Pattern.quote(stopword) + "\\b", "");
+        for (String stopword : SORTED_STOPWORDS) {
+            // 判断是否包含英文字符
+            if (stopword.matches(".*[a-zA-Z]+.*")) {
+                // 英文停用词：使用单词边界匹配
+                name = name.replaceAll("\\b" + Pattern.quote(stopword) + "\\b", "");
+            } else {
+                // 中文停用词：直接替换
+                name = name.replace(stopword, "");
+            }
         }
         // 去除标点符号
         name = removePunctuation(name);
