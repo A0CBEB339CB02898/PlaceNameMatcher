@@ -6,7 +6,7 @@
 
     <groupId>io.github.a0cbeb339cb02898</groupId>
     <artifactId>place-name-matcher</artifactId>
-    <version>1.0.6</version>
+    <version>1.0.7</version>
     <packaging>jar</packaging>
     <name>PlaceNameMatcher</name>
     <description>A place name matching library using Jaro-Winkler and TF-IDF cosine similarity.</description>
@@ -80,6 +80,13 @@
             <groupId>com.belerweb</groupId>
             <artifactId>pinyin4j</artifactId>
             <version>2.5.1</version>
+        </dependency>
+
+        <!-- OpenCC for java 繁体转简体 -->
+        <dependency>
+            <groupId>com.github.houbb</groupId>
+            <artifactId>opencc4j</artifactId>
+            <version>1.13.1</version>
         </dependency>
 
     </dependencies>

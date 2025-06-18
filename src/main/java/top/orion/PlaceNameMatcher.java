@@ -1,6 +1,7 @@
 package top.orion;
 
 import cn.hutool.extra.pinyin.PinyinUtil;
+import com.github.houbb.opencc4j.util.ZhConverterUtil;
 import org.apache.commons.text.similarity.JaroWinklerSimilarity;
 
 import java.io.BufferedReader;
@@ -216,6 +217,9 @@ public class PlaceNameMatcher {
      * @return 标准化后的地名
      */
     private String normalizePlaceName(String name) {
+        // 将繁体字转为简体字
+        name = ZhConverterUtil.toSimple(name);
+
         for (String stopword : SORTED_STOPWORDS) {
             // 判断是否包含英文字符
             if (stopword.matches(".*[a-zA-Z]+.*")) {
