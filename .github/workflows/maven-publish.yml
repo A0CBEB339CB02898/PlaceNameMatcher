@@ -1,20 +1,21 @@
 # This workflow will build a package using Maven and publish it to GitHub Packages
-# when a release is created or a tag starting with 'v' is pushed.
+# when a release is created
 
 name: Maven Publish
 
 on:
+  release:
+    types: [ created ]
   push:
     tags:
       - 'v*'
-  release:
-    types: [ created ]
+      - 'latest'
 
 jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: write
+      contents: read
       packages: write
 
     steps:
@@ -28,29 +29,27 @@ jobs:
           server-id: github
           settings-path: ${{ github.workspace }}
 
-      - name: 1. Build and publish versioned package
+      - name: Build and publish with original version
         run: |
           mvn clean package --file pom.xml
           mvn deploy -s $GITHUB_WORKSPACE/settings.xml -DskipTests
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: 2. Create Release for Versioned Tag
-        # 只在推送了 v* 标签或创建 release 时执行
-        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: target/*.jar
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
+      #      - name: 2. Create Release for Versioned Tag
+      #        # 只在推送了 v* 标签或创建 release 时执行
+      #        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
+      #        uses: softprops/action-gh-release@v2
+      #        with:
+      #          files: target/*.jar
+      #        env:
+      #          GITHUB_TOKEN: ${{ github.token }}
 
-      - name: 3. Set version to latest and publish
-        # 强制修改版本号为 latest 并重新构建上传
-        # 注意：GitHub Packages 如果 'latest' 版本已存在，可能会返回 409 错误
+
+      - name: Set version to latest and publish
         run: |
-          mvn versions:set -DnewVersion=latest -DgenerateBackupPoms=false
-          mvn clean package --file pom.xml -DskipTests
+          mvn versions:set -DnewVersion=latest
+          mvn clean package --file pom.xml
           mvn deploy -s $GITHUB_WORKSPACE/settings.xml -DskipTests
-        continue-on-error: true
         env:
           GITHUB_TOKEN: ${{ github.token }}
