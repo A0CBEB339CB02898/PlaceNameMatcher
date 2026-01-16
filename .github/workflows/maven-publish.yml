@@ -1,11 +1,13 @@
-# This workflow will build a package using Maven and publish it to GitHub Packages # when a release is created
+# This workflow will build a package using Maven and publish it to GitHub Packages
+# when a release is created or a version tag is pushed.
 name: Maven Publish
 
 on:
+  release:
+    types: [ created ]
   push:
     tags:
       - 'v*'
-      - 'latest'
 
 jobs:
   build:
@@ -25,8 +27,7 @@ jobs:
           server-id: github
           settings-path: ${{ github.workspace }}
 
-      - name: Build and publish with original version
-        if: startsWith(github.ref, 'refs/tags/v')
+      - name: Build and publish versioned
         run: |
           mvn clean package --file pom.xml
           mvn deploy -s $GITHUB_WORKSPACE/settings.xml -DskipTests
@@ -34,30 +35,23 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
 
       - name: Create Versioned Release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
         with:
-          files: |
-            target/*.jar
+          files: target/*.jar
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      - name: Set version to latest and publish
+      - name: Set version to latest and package
         run: |
-          mvn versions:set -DnewVersion=latest
-          mvn clean package --file pom.xml
+          mvn versions:set -DnewVersion=latest -DgenerateBackupPoms=false
+          mvn clean package --file pom.xml -DskipTests
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Publish latest to Packages
+        run: |
           mvn deploy -s $GITHUB_WORKSPACE/settings.xml -DskipTests
         continue-on-error: true
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-
-      - name: Create or Update Latest Release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: latest
-          name: Latest Release
-          files: |
-            target/*.jar
-          prerelease: false
         env:
           GITHUB_TOKEN: ${{ github.token }}
