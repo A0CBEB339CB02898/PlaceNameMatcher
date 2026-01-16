@@ -134,6 +134,10 @@ public class PlaceNameMatcher {
         return getInstance().isSamePlace(name1, name2);
     }
 
+    public static double getThreshold() {
+        return THRESHOLD;
+    }
+
     /**
      * 设置匹配阈值（方便动态调整）
      *
@@ -141,10 +145,6 @@ public class PlaceNameMatcher {
      */
     public static void setThreshold(double threshold) {
         THRESHOLD = threshold;
-    }
-
-    public static double getTHRESHOLD() {
-        return THRESHOLD;
     }
 
     /**
