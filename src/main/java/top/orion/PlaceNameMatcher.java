@@ -143,6 +143,10 @@ public class PlaceNameMatcher {
         THRESHOLD = threshold;
     }
 
+    public static double getTHRESHOLD() {
+        return THRESHOLD;
+    }
+
     /**
      * 设置各算法权重（方便调优）
      *
