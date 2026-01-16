@@ -4,12 +4,9 @@
 name: Maven Publish
 
 on:
-  release:
-    types: [ created ]
   push:
     tags:
       - 'v*'
-      - 'latest'
 
 jobs:
   build:
@@ -36,20 +33,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
 
-      #      - name: 2. Create Release for Versioned Tag
-      #        # 只在推送了 v* 标签或创建 release 时执行
-      #        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
-      #        uses: softprops/action-gh-release@v2
-      #        with:
-      #          files: target/*.jar
-      #        env:
-      #          GITHUB_TOKEN: ${{ github.token }}
-
-
-      - name: Set version to latest and publish
-        run: |
-          mvn versions:set -DnewVersion=latest
-          mvn clean package --file pom.xml
-          mvn deploy -s $GITHUB_WORKSPACE/settings.xml -DskipTests
+      - name: 2. Create Release for Versioned Tag
+        # 只在推送了 v* 标签或创建 release 时执行
+        if: startsWith(github.ref, 'refs/tags/v') || github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/*.jar
         env:
           GITHUB_TOKEN: ${{ github.token }}
+
+
+#      - name: Set version to latest and publish
+#        run: |
+#          mvn versions:set -DnewVersion=latest
+#          mvn clean package --file pom.xml
+#          mvn deploy -s $GITHUB_WORKSPACE/settings.xml -DskipTests
+#        env:
+#          GITHUB_TOKEN: ${{ github.token }}
