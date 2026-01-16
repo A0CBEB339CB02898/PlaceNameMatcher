@@ -117,9 +117,20 @@ public class PlaceNameMatcher {
      *
      * @param name1 地名1
      * @param name2 地名2
-     * @return 是否为同一地点
+     * @return 匹配重合度 [0-1]
      */
     public static boolean match(String name1, String name2) {
+        return getInstance().isSamePlace(name1, name2) > THRESHOLD;
+    }
+
+    /**
+     * 对外暴露的统一匹配接口 默认阈值和权重下简单匹配
+     *
+     * @param name1 地名1
+     * @param name2 地名2
+     * @return 匹配重合度 [0-1]
+     */
+    public static double matchDegree(String name1, String name2) {
         return getInstance().isSamePlace(name1, name2);
     }
 
@@ -166,23 +177,23 @@ public class PlaceNameMatcher {
      * @param name2 地名2
      * @return 是否为同一地点
      */
-    public boolean isSamePlace(String name1, String name2) {
+    public double isSamePlace(String name1, String name2) {
         // 1. 预处理：去除冗余词
         String cleanName1 = normalizePlaceName(name1);
         String cleanName2 = normalizePlaceName(name2);
 
         // 如果一个为空，直接返回 false
         if (cleanName1.isEmpty() || cleanName2.isEmpty()) {
-            return false;
+            return 0;
         }
 
         // 如果长度差异太大，也可以提前返回 false（可选）
         if (Math.abs(cleanName1.length() - cleanName2.length()) > 8) {
-            return false;
+            return 0;
         }
 
         if (cleanName1.equals(cleanName2)) {
-            return true;
+            return 1;
         }
 
 
@@ -207,7 +218,7 @@ public class PlaceNameMatcher {
 //        System.out.println("WEIGHT_TFIDF_COSINE:" + WEIGHT_TFIDF_COSINE);
 
         // 4. 判断是否超过阈值
-        return totalScore > THRESHOLD;
+        return totalScore;
     }
 
     /**
@@ -216,7 +227,7 @@ public class PlaceNameMatcher {
      * @param name 原始地名
      * @return 标准化后的地名
      */
-    private String normalizePlaceName(String name) {
+    public String normalizePlaceName(String name) {
         // 将繁体字转为简体字
         name = ZhConverterUtil.toSimple(name);
 
